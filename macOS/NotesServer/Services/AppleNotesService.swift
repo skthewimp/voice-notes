@@ -8,8 +8,8 @@ class AppleNotesService {
     /// Create a note in Apple Notes with the given content
     func createNote(title: String, summary: String, transcription: String) async throws {
         // Convert plain text to HTML with proper line breaks
-        let summaryHTML = summary.replacingOccurrences(of: "\n", with: "<br>")
-        let transcriptionHTML = transcription.replacingOccurrences(of: "\n", with: "<br>")
+        let summaryHTML = escapeForHTML(summary).replacingOccurrences(of: "\n", with: "<br>")
+        let transcriptionHTML = escapeForHTML(transcription).replacingOccurrences(of: "\n", with: "<br>")
 
         let htmlContent = """
         <div>\(summaryHTML)</div>
@@ -22,19 +22,15 @@ class AppleNotesService {
 
         let appleScript = """
         tell application "Notes"
-            -- Activate to ensure it's running
             activate
 
-            -- Try to find the folder, create if it doesn't exist
             set targetFolder to missing value
             try
                 set targetFolder to folder "\(folderName)"
             on error
-                -- Create the folder if it doesn't exist
                 set targetFolder to make new folder with properties {name:"\(folderName)"}
             end try
 
-            -- Create the note with HTML content
             tell targetFolder
                 make new note with properties {name:"\(escapeForAppleScriptSimple(title))", body:"\(escapeForAppleScriptSimple(htmlContent))"}
             end tell
@@ -59,6 +55,16 @@ class AppleNotesService {
                 }
             }
         }
+    }
+
+    /// Escape special characters for HTML
+    private func escapeForHTML(_ string: String) -> String {
+        return string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 
     /// Escape special characters for AppleScript strings (simple version without newline handling)
