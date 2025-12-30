@@ -89,6 +89,69 @@ class ProcessingService {
         return transcription
     }
 
+    /// Generate a concise title from transcribed text using Ollama
+    func generateTitle(text: String, model: String = "mistral:latest") async throws -> String {
+        let prompt = """
+        Generate a short, descriptive title (3-6 words) for this voice note. Only output the title, nothing else.
+
+        Voice note: \(text.prefix(500))
+
+        Title:
+        """
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/ollama")
+        process.arguments = ["run", model]
+
+        // Set up environment
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = "/opt/homebrew/bin:\(environment["PATH"] ?? "")"
+        process.environment = environment
+
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        print("📝 Generating title with model: \(model)")
+
+        try process.run()
+
+        // Write prompt to stdin
+        if let promptData = prompt.data(using: .utf8) {
+            inputPipe.fileHandleForWriting.write(promptData)
+        }
+        inputPipe.fileHandleForWriting.closeFile()
+
+        process.waitUntilExit()
+
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        if let errorOutput = String(data: errorData, encoding: .utf8), !errorOutput.isEmpty {
+            print("⚠️  Title generation stderr: \(errorOutput)")
+        }
+
+        guard process.terminationStatus == 0 else {
+            print("❌ Title generation failed with status: \(process.terminationStatus)")
+            throw ProcessingError.titleGenerationFailed
+        }
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        guard let title = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "Title:", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else {
+            print("❌ No title output received")
+            throw ProcessingError.invalidOutput
+        }
+
+        print("✅ Title generated: \(title)")
+        return title
+    }
+
     /// Summarize transcribed text using Ollama
     func summarize(text: String, model: String = "mistral:latest") async throws -> String {
         let scriptPath = projectRoot
@@ -147,14 +210,16 @@ class ProcessingService {
         let transcription = try await transcribe(audioURL: note.audioPath)
         note.transcription = transcription
 
-        // Step 2: Summarize
+        // Step 2: Generate title
+        let noteTitle = try await generateTitle(text: transcription)
+
+        // Step 3: Summarize
         note.status = .summarizing
         let summary = try await summarize(text: transcription)
         note.summary = summary
 
-        // Step 3: Save to Apple Notes
+        // Step 4: Save to Apple Notes
         note.status = .savingToNotes
-        let noteTitle = "Voice Note - \(note.formattedDate)"
         try await notesService.createNote(
             title: noteTitle,
             summary: summary,
@@ -169,6 +234,7 @@ class ProcessingService {
 
 enum ProcessingError: LocalizedError {
     case transcriptionFailed
+    case titleGenerationFailed
     case summarizationFailed
     case invalidOutput
 
@@ -176,6 +242,8 @@ enum ProcessingError: LocalizedError {
         switch self {
         case .transcriptionFailed:
             return "Failed to transcribe audio"
+        case .titleGenerationFailed:
+            return "Failed to generate note title"
         case .summarizationFailed:
             return "Failed to generate summary"
         case .invalidOutput:
