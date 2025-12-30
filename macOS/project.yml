@@ -1,0 +1,40 @@
+name: NotesServer
+options:
+  bundleIdPrefix: com.notesagent
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+targets:
+  NotesServer:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - NotesServer
+      - ../shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.notesagent.notesserver
+        PRODUCT_NAME: NotesServer
+        INFOPLIST_FILE: NotesServer/Info.plist
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+      debug:
+        CODE_SIGN_IDENTITY: "-"
+      release:
+        CODE_SIGN_IDENTITY: "-"
+    scheme:
+      build:
+        targets:
+          NotesServer: all
+      run:
+        commandLineArguments:
+        environmentVariables:
+      test:
+        commandLineArguments:
+        environmentVariables:
