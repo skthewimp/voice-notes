@@ -91,40 +91,33 @@ class ProcessingService {
 
     /// Generate a concise title from transcribed text using Ollama
     func generateTitle(text: String, model: String = "mistral:latest") async throws -> String {
-        let prompt = """
-        Generate a short, descriptive title (3-6 words) for this voice note. Only output the title, nothing else.
-
-        Voice note: \(text.prefix(500))
-
-        Title:
-        """
+        let scriptPath = projectRoot
+            .appendingPathComponent("scripts")
+            .appendingPathComponent("generate_title.py")
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/ollama")
-        process.arguments = ["run", model]
+        process.executableURL = venvPython
+        process.arguments = [
+            scriptPath.path,
+            text,
+            "--model", model
+        ]
 
-        // Set up environment
+        // Set up environment to ensure venv and ollama work properly
         var environment = ProcessInfo.processInfo.environment
-        environment["PATH"] = "/opt/homebrew/bin:\(environment["PATH"] ?? "")"
+        environment["VIRTUAL_ENV"] = projectRoot.appendingPathComponent("venv").path
+        // Include homebrew bin for ollama, venv bin, and existing PATH
+        environment["PATH"] = "/opt/homebrew/bin:\(projectRoot.appendingPathComponent("venv/bin").path):\(environment["PATH"] ?? "")"
         process.environment = environment
 
-        let inputPipe = Pipe()
         let outputPipe = Pipe()
         let errorPipe = Pipe()
-        process.standardInput = inputPipe
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
         print("📝 Generating title with model: \(model)")
 
         try process.run()
-
-        // Write prompt to stdin
-        if let promptData = prompt.data(using: .utf8) {
-            inputPipe.fileHandleForWriting.write(promptData)
-        }
-        inputPipe.fileHandleForWriting.closeFile()
-
         process.waitUntilExit()
 
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
@@ -138,12 +131,7 @@ class ProcessingService {
         }
 
         let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let title = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\"", with: "")
-            .replacingOccurrences(of: "Title:", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !title.isEmpty else {
+        guard let title = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
             print("❌ No title output received")
             throw ProcessingError.invalidOutput
         }
