@@ -1,180 +1,311 @@
 # Voice Notes Agent
 
-Dictate voice notes on your iPhone, automatically sync to your Mac, transcribe with Whisper, summarize with Ollama, and save to Apple Notes.
+A **100% local-first** voice notes system: Record on iPhone, sync to Mac, transcribe with Whisper, summarize with AI, and save to Apple Notes.
 
-## 🚀 Quick Start
+> **Privacy First**: All processing happens on your devices. No cloud services, no data leaves your network.
 
-### Running the Mac Server
+## ✨ Features
 
-The NotesServer app is now installed in `/Applications/` and can run **without Xcode**:
+- 🎤 **iOS App**: Simple voice recording with tap-to-record interface
+- 📡 **WiFi Sync**: Automatic sync when iPhone and Mac are on same network
+- 📝 **Transcription**: OpenAI Whisper converts speech to text (runs locally)
+- 🤖 **AI Summary**: Ollama generates bullet-point summaries (runs locally)
+- 📓 **Apple Notes**: Automatically saves formatted notes to "Voice Summaries" folder
+- 🔒 **Private**: Everything stays on your devices
+- 🎨 **Custom Icons**: Beautiful microphone design
+
+## 📋 Prerequisites
+
+Before you begin, you'll need:
+
+### On Mac
+- macOS 12+ (Apple Silicon or Intel)
+- [Xcode 15+](https://apps.apple.com/us/app/xcode/id497799835) (from App Store)
+- [Homebrew](https://brew.sh/) (package manager)
+- 16GB+ RAM recommended (for running local AI models)
+
+### On iPhone
+- iOS 14+
+- iPhone connected to same WiFi as Mac
+
+## 🚀 Quick Setup
+
+### Step 1: Install Dependencies (Mac)
 
 ```bash
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install required tools
+brew install python@3.13 ffmpeg ollama xcodegen
+
+# Start Ollama service
+brew services start ollama
+
+# Download AI model for summarization
+ollama pull mistral:latest
+```
+
+### Step 2: Set Up Python Environment
+
+```bash
+cd voice-notes
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install Whisper for transcription
+pip install openai-whisper
+
+# Deactivate for now
+deactivate
+```
+
+### Step 3: Build the Apps
+
+#### Mac Server App
+
+```bash
+cd macOS
+
+# Build the app
+xcodebuild -project NotesServer.xcodeproj -scheme NotesServer -configuration Release build
+
+# Install to Applications
+cp -R ~/Library/Developer/Xcode/DerivedData/NotesServer-*/Build/Products/Release/NotesServer.app /Applications/
+
 # Start the server
 open -a /Applications/NotesServer.app
+```
 
-# Or use the helper script
-/Users/Karthik/Documents/work/NotesAgent/start-notes-server.sh
+#### iOS App
 
-# To stop the server
+```bash
+cd iOS
+
+# Generate Xcode project
+xcodegen generate
+
+# Open in Xcode
+open VoiceNotes.xcodeproj
+```
+
+In Xcode:
+1. Select your development team in Signing & Capabilities
+2. Connect your iPhone via cable
+3. Select your iPhone as the build destination
+4. Press Cmd+R to build and install
+
+## 📱 How to Use
+
+### First Time Setup
+
+1. **Start the Mac server**:
+   ```bash
+   open -a /Applications/NotesServer.app
+   ```
+   You should see "Server listening on port 8888" in the app window.
+
+2. **Find your Mac's IP address**:
+   - System Preferences → Network
+   - Look for your IP (e.g., `192.168.1.100`)
+
+3. **Connect from iPhone**:
+   - Open VoiceNotes app
+   - Tap the settings icon (⚙️)
+   - Enter your Mac's IP address
+   - Tap "Connect"
+   - You should see "Connected" status
+
+### Recording and Processing
+
+1. **Record**: Tap the microphone button to start recording, tap again to stop
+2. **Sync**: Swipe left on the recording → Tap "Sync"
+3. **Wait**: The Mac will transcribe and summarize (takes 10-30 seconds)
+4. **Check Apple Notes**: Open Notes app → "Voice Summaries" folder
+
+Your note will contain:
+- AI-generated bullet-point summary
+- Separator line (`---`)
+- Full transcription
+
+## 📁 Project Structure
+
+```
+voice-notes/
+├── iOS/                    # iPhone app
+│   ├── VoiceNotes/        # App source code
+│   │   ├── Models/        # Data models
+│   │   ├── Services/      # Audio recording & sync
+│   │   └── Views/         # SwiftUI interfaces
+│   └── project.yml        # XcodeGen configuration
+│
+├── macOS/                  # Mac server app
+│   ├── NotesServer/       # Server source code
+│   │   ├── Models/        # Data models
+│   │   ├── Services/      # Network, processing, Apple Notes
+│   │   └── Views/         # SwiftUI interfaces
+│   └── project.yml        # XcodeGen configuration
+│
+├── shared/                 # Code shared between apps
+│   └── NetworkProtocol.swift  # Network message format
+│
+├── scripts/               # Python processing scripts
+│   ├── transcribe.py     # Whisper transcription
+│   ├── summarize.py      # Ollama summarization
+│   └── generate_icons.py # Icon generator
+│
+└── icons/                # App icons
+    ├── macos/           # macOS .icns
+    └── ios/             # iOS AppIcon assets
+```
+
+## 🔧 Configuration
+
+### Change AI Model
+
+Edit `macOS/NotesServer/Services/ProcessingService.swift`:
+
+```swift
+// Line 85: Change the model
+func summarize(text: String, model: String = "mistral:latest") async throws -> String {
+```
+
+Available models (must be downloaded first with `ollama pull`):
+- `mistral:latest` - Balanced quality/speed (default)
+- `llama3.1:latest` - High quality
+- `gemma2:latest` - Fast
+
+### Change Whisper Model
+
+Edit `scripts/transcribe.py`:
+
+```python
+# Line 49: Change model size
+parser.add_argument("--model", default="base",
+                   choices=["tiny", "base", "small", "medium", "large"])
+```
+
+- `tiny` - Fastest, less accurate
+- `base` - Good balance (default)
+- `small/medium/large` - More accurate, slower
+
+## 🐛 Troubleshooting
+
+### Mac Server Won't Start
+
+```bash
+# Check if port 8888 is in use
+lsof -nP -iTCP:8888 -sTCP:LISTEN
+
+# If something is using it, kill it
 killall NotesServer
 ```
 
-The server will:
-- Listen on port 8888 for iPhone connections
-- Automatically transcribe recordings with Whisper
-- Summarize with Mistral (Ollama)
-- Save to Apple Notes in "Voice Summaries" folder
+### iPhone Won't Connect
 
-### Using the iPhone App
+1. Make sure both devices are on the **same WiFi network**
+2. Check Mac firewall: System Preferences → Security & Privacy → Firewall → Allow incoming connections
+3. Verify Mac IP address is correct
+4. Try restarting both apps
 
-1. Open VoiceNotes on your iPhone
-2. Tap settings → Enter your Mac's IP address → Connect
-3. Record a voice note (tap microphone button)
-4. Swipe left on the recording → Tap "Sync"
-5. Check Apple Notes → "Voice Summaries" folder for the result
+### Transcription Fails
 
-## System Requirements
-
-- **iPhone**: iOS 14+ with microphone access
-- **Mac**: macOS with Apple Silicon or Intel
-- **RAM**: 16GB+ recommended for local LLM
-- **Python**: 3.13+ (installed)
-- **Ollama**: 0.13.5+ (installed via Homebrew)
-- **ffmpeg**: (installed via Homebrew)
-- **Whisper**: (installed in Python venv)
-
-## Features
-
-- 🎤 **Record** voice notes on iPhone with simple tap-to-record
-- 📡 **WiFi Sync** when on same network (local, fast, private)
-- 📝 **Transcribe** using OpenAI Whisper (runs locally on Mac)
-- 🤖 **Summarize** using Mistral via Ollama (generates bullet points)
-- 📓 **Save to Apple Notes** automatically in "Voice Summaries" folder
-- 💾 **Fully Local** - no cloud services needed
-- 🔒 **Private** - all processing happens on your devices
-- 🎨 **Custom Icons** - microphone and sound wave design
-
-## What's Included
-
-✅ Python scripts for transcription and summarization
-✅ macOS server app (Swift/SwiftUI) - installed in /Applications
-✅ iOS recording app (Swift/SwiftUI)
-✅ Apple Notes integration
-✅ Shared networking protocol
-✅ Custom app icons
-✅ Complete documentation
-
-## Project Structure
-
-```
-NotesAgent/
-├── iOS/VoiceNotes/          # iPhone app (Swift/SwiftUI)
-├── macOS/NotesServer/       # Mac server app (Swift/SwiftUI)
-├── shared/                  # Shared Swift code
-├── scripts/                 # Python scripts
-│   ├── transcribe.py       # Whisper transcription
-│   ├── summarize.py        # Ollama summarization
-│   └── generate_icons.py   # App icon generator
-├── icons/                  # App icons
-│   ├── macos/              # macOS .icns and PNGs
-│   └── ios/                # iOS AppIcon assets
-└── venv/                   # Python virtual environment
-```
-
-## File Locations
-
-- **Mac Server**: `/Applications/NotesServer.app`
-- **Received Audio**: `~/Documents/VoiceNotes/`
-- **Apple Notes**: "Voice Summaries" folder
-- **Python venv**: `/Users/Karthik/Documents/work/NotesAgent/venv`
-- **Ollama**: `/opt/homebrew/bin/ollama`
-
-## Workflow
-
-1. **Record**: Open iOS app → Tap microphone → Record → Stop
-2. **Sync**: Swipe left on recording → Tap "Sync"
-3. **Process**: Mac receives → Transcribes with Whisper → Summarizes with Mistral
-4. **Save**: Creates note in Apple Notes "Voice Summaries" folder
-
-## Configuration
-
-- **Whisper Model**: `base` (fast, accurate for voice notes)
-- **Ollama Model**: `mistral:latest` (excellent for summaries)
-- **Ollama Service**: Started via `brew services start ollama`
-- **Network Port**: 8888 (TCP, local network only)
-- **Network Protocol**: 4-byte length prefix + JSON messages
-
-## Troubleshooting
-
-### Server Not Receiving
 ```bash
-# Check server is running
-pgrep NotesServer
+# Verify ffmpeg is installed
+ffmpeg -version
 
-# Check listening on port 8888
-lsof -nP -iTCP:8888 -sTCP:LISTEN
-
-# Verify same WiFi network
-# Check Mac firewall allows port 8888
+# Verify Whisper is installed
+source venv/bin/activate
+python -c "import whisper"
+deactivate
 ```
 
-### Transcription Failing
+### Summarization Fails
+
 ```bash
-# Verify ffmpeg
-/opt/homebrew/bin/ffmpeg -version
-
-# Check Whisper installed
-/Users/Karthik/Documents/work/NotesAgent/venv/bin/python3 -c "import whisper"
-
-# Check audio files
-ls ~/Documents/VoiceNotes/
-```
-
-### Summarization Failing
-```bash
-# Check Ollama running
+# Check Ollama is running
 brew services list | grep ollama
 
 # Start if needed
 brew services start ollama
 
-# Verify model
-/opt/homebrew/bin/ollama list
+# Verify model is downloaded
+ollama list
 
-# Test manually
-echo "test" | /opt/homebrew/bin/ollama run mistral:latest
+# Download if needed
+ollama pull mistral:latest
 ```
 
-## Development
+### No Notes Created in Apple Notes
 
-### Rebuild Mac Server
-```bash
-cd /Users/Karthik/Documents/work/NotesAgent/macOS
-xcodebuild -project NotesServer.xcodeproj -scheme NotesServer -configuration Release build
-cp -R ~/Library/Developer/Xcode/DerivedData/NotesServer-*/Build/Products/Release/NotesServer.app /Applications/
-```
+1. Open Apple Notes app manually first
+2. Grant permissions if prompted
+3. Check for "Voice Summaries" folder
+4. Try creating a test note manually to verify Notes is working
 
-### Rebuild iOS App
+## 🛠 Development
+
+### Regenerate Xcode Projects
+
 ```bash
-cd /Users/Karthik/Documents/work/NotesAgent/iOS
-xcodegen generate
-# Then build and install via Xcode
+# iOS
+cd iOS && xcodegen generate
+
+# macOS
+cd macOS && xcodegen generate
 ```
 
 ### Regenerate Icons
+
 ```bash
-/Users/Karthik/Documents/work/NotesAgent/venv/bin/python3 /Users/Karthik/Documents/work/NotesAgent/scripts/generate_icons.py
+source venv/bin/activate
+python scripts/generate_icons.py
+deactivate
 ```
 
-## Apple Notes Format
+## 💡 How It Works
 
-Each processed voice note appears in "Voice Summaries" with:
-- **Summary**: Bullet points at the top
-- **Separator**: `---`
-- **Full Transcription**: Complete text below
+1. **Record**: iOS app captures audio using AVAudioRecorder
+2. **Sync**: Audio file sent over TCP (port 8888) with metadata
+3. **Transcribe**: Mac runs Whisper Python script to convert speech→text
+4. **Summarize**: Mac runs Ollama to generate bullet points
+5. **Save**: Mac uses AppleScript to create formatted note in Apple Notes
 
-The HTML formatting ensures proper line breaks between bullet points.
+## 🤝 Contributing
 
-## License
+Contributions are welcome! Feel free to:
 
-Personal use project.
+- Report bugs by opening an issue
+- Suggest features or improvements
+- Submit pull requests
+
+## 📄 Technical Details
+
+- **Network Protocol**: TCP on port 8888, JSON messages with 4-byte length prefix
+- **Audio Format**: M4A (AAC), 44.1kHz, mono
+- **Transcription**: OpenAI Whisper (base model)
+- **Summarization**: Ollama with Mistral model
+- **Apple Notes**: HTML formatting via AppleScript automation
+
+## ⚠️ Known Issues
+
+- First transcription is slow (~30 seconds) as Whisper loads the model
+- Subsequent transcriptions are faster (~10 seconds)
+- Large audio files (>5 minutes) may take longer to process
+- Requires Mac and iPhone to be on same WiFi network
+
+## 🙏 Credits
+
+Built with:
+- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition
+- [Ollama](https://ollama.ai/) - Local LLM runtime
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) - Xcode project generation
+- Swift, SwiftUI, Python
+
+---
+
+**Made with Claude Code** 🤖

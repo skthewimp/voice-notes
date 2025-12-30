@@ -7,8 +7,16 @@ class ProcessingService {
     private let notesService = AppleNotesService()
 
     init() {
-        // Use hardcoded path to project root
-        self.projectRoot = URL(fileURLWithPath: "/Users/Karthik/Documents/work/NotesAgent")
+        // IMPORTANT: Update this path to match where you cloned the repository
+        // Default assumes you cloned to ~/voice-notes
+        // You can also set the VOICE_NOTES_ROOT environment variable
+        if let envRoot = ProcessInfo.processInfo.environment["VOICE_NOTES_ROOT"] {
+            self.projectRoot = URL(fileURLWithPath: envRoot)
+        } else {
+            // Default to ~/voice-notes (adjust this path if you cloned elsewhere)
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser
+            self.projectRoot = homeDir.appendingPathComponent("voice-notes")
+        }
 
         self.venvPython = projectRoot
             .appendingPathComponent("venv")

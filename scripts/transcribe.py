@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
 """
 Transcribe audio files using OpenAI Whisper.
-Usage: python transcribe.py <audio_file> [--model base]
+
+This script is called by the Mac server to convert voice recordings to text.
+It uses the locally-installed Whisper model (no internet required).
+
+Usage:
+    python transcribe.py <audio_file> [--model base]
+
+Models (in order of speed vs accuracy):
+    - tiny:   Fastest, least accurate
+    - base:   Good balance (default)
+    - small:  Better accuracy, slower
+    - medium: High accuracy, much slower
+    - large:  Best accuracy, very slow
+
+Example:
+    python transcribe.py recording.m4a --model base
 """
 
 import sys

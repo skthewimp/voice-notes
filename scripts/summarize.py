@@ -1,7 +1,28 @@
 #!/usr/bin/env python3
 """
 Summarize transcribed text into bullet points using Ollama.
-Usage: python summarize.py <text_or_file> [--model qwen3:8b]
+
+This script is called by the Mac server to convert transcribed voice notes
+into concise, organized bullet-point summaries. It uses the locally-running
+Ollama LLM service (no internet required).
+
+Usage:
+    python summarize.py "text to summarize" [--model mistral:latest]
+    python summarize.py transcript.txt [--model mistral:latest]
+
+Models (must be downloaded first with 'ollama pull'):
+    - mistral:latest  - Balanced quality/speed (default, recommended)
+    - llama3.1:latest - High quality, better reasoning
+    - gemma2:latest   - Faster, lighter weight
+    - qwen3:8b        - Alternative option
+
+Example:
+    python summarize.py "Today I went to the store and bought milk..." --model mistral:latest
+
+Prerequisites:
+    - Ollama installed via Homebrew: brew install ollama
+    - Ollama service running: brew services start ollama
+    - Model downloaded: ollama pull mistral:latest
 """
 
 import sys
