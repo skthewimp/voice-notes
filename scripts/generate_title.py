@@ -68,7 +68,7 @@ def generate_title(text: str, model: str = "mistral:latest") -> str:
     # Use only first 500 characters for title generation
     snippet = text[:500] if len(text) > 500 else text
 
-    prompt = f"""Generate a short, descriptive title (3-6 words) for this voice note. Only output the title, nothing else.
+    prompt = f"""Generate a short, descriptive title (3-6 words) for this voice note. Only output the title text, no formatting, no bullets, no dashes.
 
 Voice note: {snippet}
 
@@ -77,13 +77,23 @@ Title:"""
     print(f"Generating title with {model}...", file=sys.stderr)
     title = call_ollama(prompt, model)
 
-    # Clean up the title
+    # Clean up the title - remove quotes, "Title:" prefix, bullets, dashes
     title = title.replace('"', '').replace('Title:', '').strip()
+
+    # Remove leading bullets, dashes, numbers
+    title = re.sub(r'^[\-\*\•\d\.\)]+\s*', '', title).strip()
+
+    # Remove any remaining line breaks or extra whitespace
+    title = ' '.join(title.split())
 
     # If title is too long, truncate to first 6 words
     words = title.split()
     if len(words) > 6:
         title = ' '.join(words[:6])
+
+    # Ensure title is not empty
+    if not title:
+        title = "Voice Note"
 
     return title
 

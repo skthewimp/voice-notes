@@ -191,6 +191,29 @@ class ProcessingService {
         return summary
     }
 
+    /// Extract a title from the summary (first line/bullet point)
+    func extractTitleFromSummary(_ summary: String) -> String {
+        // Get first line or bullet point from summary
+        let lines = summary.components(separatedBy: .newlines)
+        for line in lines {
+            let cleaned = line
+                .replacingOccurrences(of: "•", with: "")
+                .replacingOccurrences(of: "-", with: "")
+                .replacingOccurrences(of: "*", with: "")
+                .trimmingCharacters(in: .whitespaces)
+
+            if !cleaned.isEmpty && cleaned.count > 5 {
+                // Take first 8 words max
+                let words = cleaned.split(separator: " ").prefix(8)
+                return words.joined(separator: " ")
+            }
+        }
+
+        // Fallback: use first few words of summary
+        let words = summary.split(separator: " ").prefix(6)
+        return words.joined(separator: " ")
+    }
+
     /// Process a voice note: transcribe and summarize
     func process(note: inout VoiceNote) async throws {
         // Step 1: Transcribe
@@ -198,13 +221,13 @@ class ProcessingService {
         let transcription = try await transcribe(audioURL: note.audioPath)
         note.transcription = transcription
 
-        // Step 2: Generate title
-        let noteTitle = try await generateTitle(text: transcription)
-
-        // Step 3: Summarize
+        // Step 2: Summarize
         note.status = .summarizing
         let summary = try await summarize(text: transcription)
         note.summary = summary
+
+        // Step 3: Extract title from summary
+        let noteTitle = extractTitleFromSummary(summary)
 
         // Step 4: Save to Apple Notes
         note.status = .savingToNotes
