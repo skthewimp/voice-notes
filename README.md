@@ -11,6 +11,7 @@ A **100% local-first** voice notes system: Record on iPhone, sync to Mac, transc
 - 📝 **Transcription**: OpenAI Whisper converts speech to text (runs locally)
 - 🤖 **AI Summary**: Ollama generates bullet-point summaries (runs locally)
 - 📓 **Apple Notes**: Automatically saves formatted notes to "Voice Summaries" folder
+- 🤖 **AI-Powered Setup**: MCP assistant helps you install everything (optional)
 - 🔒 **Private**: Everything stays on your devices
 - 🎨 **Custom Icons**: Beautiful microphone design
 
@@ -29,6 +30,8 @@ Before you begin, you'll need:
 - iPhone connected to same WiFi as Mac
 
 ## 🚀 Quick Setup
+
+> **🤖 Want AI to do this for you?** If you use Claude Desktop or another MCP-compatible AI assistant, you can ask it to install everything automatically. See [MCP Setup Assistant](MCP_SETUP_ASSISTANT.md) for details.
 
 ### Step 1: Install Dependencies (Mac)
 
@@ -153,14 +156,17 @@ voice-notes/
 ├── shared/                 # Code shared between apps
 │   └── NetworkProtocol.swift  # Network message format
 │
-├── scripts/               # Python processing scripts
-│   ├── transcribe.py     # Whisper transcription
-│   ├── summarize.py      # Ollama summarization
-│   └── generate_icons.py # Icon generator
+├── scripts/                  # Python processing scripts
+│   ├── transcribe.py        # Whisper transcription
+│   ├── summarize.py         # Ollama summarization
+│   └── generate_icons.py    # Icon generator
 │
-└── icons/                # App icons
-    ├── macos/           # macOS .icns
-    └── ios/             # iOS AppIcon assets
+├── mcp_setup_assistant.py   # AI-powered setup assistant (optional)
+├── MCP_SETUP_ASSISTANT.md   # Setup assistant documentation
+│
+└── icons/                   # App icons
+    ├── macos/              # macOS .icns
+    └── ios/                # iOS AppIcon assets
 ```
 
 ## 🔧 Configuration
