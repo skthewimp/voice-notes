@@ -189,27 +189,84 @@ class ProcessingService {
         return summary
     }
 
-    /// Extract a title from the summary (first line/bullet point)
-    func extractTitleFromSummary(_ summary: String) -> String {
-        // Get first line or bullet point from summary
-        let lines = summary.components(separatedBy: .newlines)
-        for line in lines {
-            let cleaned = line
-                .replacingOccurrences(of: "•", with: "")
-                .replacingOccurrences(of: "-", with: "")
-                .replacingOccurrences(of: "*", with: "")
-                .trimmingCharacters(in: .whitespaces)
+    /// Generate a concise title using AI
+    func generateTitle(from transcription: String, model: String = "qwen2.5:7b-instruct") async throws -> String {
+        // Use first 500 chars of transcription for title generation
+        let snippet = String(transcription.prefix(500))
 
-            if !cleaned.isEmpty && cleaned.count > 5 {
-                // Take first 8 words max
-                let words = cleaned.split(separator: " ").prefix(8)
-                return words.joined(separator: " ")
-            }
+        let prompt = """
+        Generate a concise 3-5 word title for this voice note. Output ONLY the title, nothing else.
+
+        Voice note: \(snippet)
+
+        Title:
+        """
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/ollama")
+        process.arguments = ["run", model]
+
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = "/opt/homebrew/bin:\(environment["PATH"] ?? "")"
+        process.environment = environment
+
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        print("📝 Generating title...")
+
+        try process.run()
+
+        if let promptData = prompt.data(using: .utf8) {
+            inputPipe.fileHandleForWriting.write(promptData)
+        }
+        inputPipe.fileHandleForWriting.closeFile()
+
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            print("❌ Title generation failed, using fallback")
+            // Fallback: use first few words of transcription
+            let words = transcription.split(separator: " ").prefix(4)
+            return words.joined(separator: " ")
         }
 
-        // Fallback: use first few words of summary
-        let words = summary.split(separator: " ").prefix(6)
-        return words.joined(separator: " ")
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let rawOutput = String(data: data, encoding: .utf8) ?? ""
+
+        // Clean up the output: remove ANSI codes, quotes, "Title:", etc.
+        var title = rawOutput
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "Title:", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Remove ANSI escape codes
+        let ansiPattern = "\\x1B(?:[@-Z\\\\-_]|\\[[0-?]*[ -/]*[@-~])"
+        if let regex = try? NSRegularExpression(pattern: ansiPattern) {
+            let range = NSRange(title.startIndex..., in: title)
+            title = regex.stringByReplacingMatches(in: title, range: range, withTemplate: "")
+        }
+
+        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Limit to 8 words max
+        let words = title.split(separator: " ")
+        if words.count > 8 {
+            title = words.prefix(8).joined(separator: " ")
+        }
+
+        // If empty or too short, use fallback
+        if title.isEmpty || title.count < 3 {
+            let words = transcription.split(separator: " ").prefix(4)
+            title = words.joined(separator: " ")
+        }
+
+        print("✅ Title: \(title)")
+        return title
     }
 
     /// Process a voice note: transcribe and summarize
@@ -219,13 +276,13 @@ class ProcessingService {
         let transcription = try await transcribe(audioURL: note.audioPath)
         note.transcription = transcription
 
-        // Step 2: Summarize
+        // Step 2: Generate title from transcription
+        let noteTitle = try await generateTitle(from: transcription)
+
+        // Step 3: Summarize
         note.status = .summarizing
         let summary = try await summarize(text: transcription)
         note.summary = summary
-
-        // Step 3: Extract title from summary
-        let noteTitle = extractTitleFromSummary(summary)
 
         // Step 4: Save to Apple Notes
         note.status = .savingToNotes
