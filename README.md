@@ -45,8 +45,8 @@ brew install python@3.13 ffmpeg ollama xcodegen
 # Start Ollama service
 brew services start ollama
 
-# Download AI model for summarization
-ollama pull mistral:latest
+# Download AI model for summarization (best quality)
+ollama pull qwen2.5:7b-instruct
 ```
 
 ### Step 2: Set Up Python Environment
@@ -171,33 +171,36 @@ voice-notes/
 
 ## 🔧 Configuration
 
-### Change AI Model
+### Change AI Model for Summarization
 
 Edit `macOS/NotesServer/Services/ProcessingService.swift`:
 
 ```swift
-// Line 85: Change the model
-func summarize(text: String, model: String = "mistral:latest") async throws -> String {
+func summarize(text: String, model: String = "qwen2.5:7b-instruct") async throws -> String {
 ```
 
 Available models (must be downloaded first with `ollama pull`):
-- `mistral:latest` - Balanced quality/speed (default)
-- `llama3.1:latest` - High quality
-- `gemma2:latest` - Fast
+- **`qwen2.5:7b-instruct`** - Best quality summaries (default, recommended)
+- `llama3.1:latest` - Good quality but verbose
+- `gemma2:latest` - Faster, lighter weight
+- `mistral:latest` - Older option, less concise
 
-### Change Whisper Model
+### Change Whisper Model for Transcription
 
-Edit `scripts/transcribe.py`:
+Current default: **`small`** (good balance of accuracy and speed)
 
-```python
-# Line 49: Change model size
-parser.add_argument("--model", default="base",
-                   choices=["tiny", "base", "small", "medium", "large"])
+Edit `macOS/NotesServer/Services/ProcessingService.swift` to change:
+
+```swift
+"--model", "small"  // Change this value
 ```
 
-- `tiny` - Fastest, less accurate
-- `base` - Good balance (default)
-- `small/medium/large` - More accurate, slower
+Available models:
+- `tiny` - Fastest, least accurate (not recommended)
+- `base` - Decent but misses details
+- **`small`** - 2x better accuracy than base, ~15 sec slower (default, recommended)
+- `medium` - Best accuracy/speed balance, ~30 sec slower (best for quality)
+- `large` - Highest accuracy, ~60+ sec (overkill for voice notes)
 
 ## 🐛 Troubleshooting
 

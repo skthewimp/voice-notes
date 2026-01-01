@@ -47,7 +47,7 @@ class ProcessingService {
         process.arguments = [
             scriptPath.path,
             audioURL.path,
-            "--model", "base"
+            "--model", "small"  // Upgraded from "base" for better accuracy
         ]
 
         // Set up environment to ensure venv and ffmpeg work properly
@@ -139,7 +139,7 @@ class ProcessingService {
     }
 
     /// Summarize transcribed text using Ollama
-    func summarize(text: String, model: String = "mistral:latest") async throws -> String {
+    func summarize(text: String, model: String = "qwen2.5:7b-instruct") async throws -> String {
         let scriptPath = projectRoot
             .appendingPathComponent("scripts")
             .appendingPathComponent("summarize.py")

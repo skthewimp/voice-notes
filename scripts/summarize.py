@@ -7,22 +7,22 @@ into concise, organized bullet-point summaries. It uses the locally-running
 Ollama LLM service (no internet required).
 
 Usage:
-    python summarize.py "text to summarize" [--model mistral:latest]
-    python summarize.py transcript.txt [--model mistral:latest]
+    python summarize.py "text to summarize" [--model qwen2.5:7b-instruct]
+    python summarize.py transcript.txt [--model qwen2.5:7b-instruct]
 
 Models (must be downloaded first with 'ollama pull'):
-    - mistral:latest  - Balanced quality/speed (default, recommended)
-    - llama3.1:latest - High quality, better reasoning
-    - gemma2:latest   - Faster, lighter weight
-    - qwen3:8b        - Alternative option
+    - qwen2.5:7b-instruct - Best quality summaries (default, recommended)
+    - llama3.1:latest     - Good quality but verbose
+    - gemma2:latest       - Faster, lighter weight
+    - mistral:latest      - Older option, less concise
 
 Example:
-    python summarize.py "Today I went to the store and bought milk..." --model mistral:latest
+    python summarize.py "Today I went to the store and bought milk..." --model qwen2.5:7b-instruct
 
 Prerequisites:
     - Ollama installed via Homebrew: brew install ollama
     - Ollama service running: brew services start ollama
-    - Model downloaded: ollama pull mistral:latest
+    - Model downloaded: ollama pull qwen2.5:7b-instruct
 """
 
 import sys
@@ -32,7 +32,7 @@ import subprocess
 from pathlib import Path
 
 
-def call_ollama(prompt: str, model: str = "mistral:latest") -> str:
+def call_ollama(prompt: str, model: str = "qwen2.5:7b-instruct") -> str:
     """
     Call Ollama API to generate summary.
 
@@ -64,7 +64,7 @@ def call_ollama(prompt: str, model: str = "mistral:latest") -> str:
         raise RuntimeError("Ollama not found. Is it installed?")
 
 
-def summarize_text(text: str, model: str = "mistral:latest") -> str:
+def summarize_text(text: str, model: str = "qwen2.5:7b-instruct") -> str:
     """
     Summarize text into concise bullet points.
 
@@ -98,8 +98,8 @@ Summary (bullet points only):"""
 def main():
     parser = argparse.ArgumentParser(description="Summarize text using Ollama")
     parser.add_argument("input", help="Text to summarize or path to text file")
-    parser.add_argument("--model", default="mistral:latest",
-                       help="Ollama model to use (default: mistral:latest)")
+    parser.add_argument("--model", default="qwen2.5:7b-instruct",
+                       help="Ollama model to use (default: qwen2.5:7b-instruct)")
     parser.add_argument("--json", action="store_true",
                        help="Output as JSON")
 
